@@ -11,7 +11,7 @@
   ],
   "require": {
     "php": ">=8.1.0",
-    "easy_aop": "*",
+    "ext-easy_aop": "*",
     "rabbit/base": "dev-master"
   },
   "autoload": {

@@ -25,7 +25,7 @@ class ObserverManager
 
     public function delObserver(string $name): void
     {
-        EasyAop::add_advice([
+        EasyAop::del_hook([
             "bhook@{$name}",
             "ahook@{$name}",
         ]);

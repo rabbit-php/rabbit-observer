@@ -1,0 +1,22 @@
+{
+  "name": "rabbit/observer",
+  "description": "rabbit observer",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "albert",
+      "email": "63851587@qq.com"
+    }
+  ],
+  "require": {
+    "php": ">=8.1.0",
+    "easy_aop": "*",
+    "rabbit/base": "dev-master"
+  },
+  "autoload": {
+    "psr-4": {
+      "Rabbit\\Observer\\": "src/"
+    }
+  }
+}

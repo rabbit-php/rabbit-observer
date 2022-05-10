@@ -12,15 +12,11 @@ class ObserverManager
     {
         EasyAop::add_advice([
             "bhook@{$name}",
-        ], function (string $joinpoint, array $args, mixed $ret) use ($func): void {
-            $func->beforeHook($joinpoint, $args, $ret);
-        });
+        ], [$func, 'beforeHook']);
 
         EasyAop::add_advice([
             "ahook@{$name}",
-        ], function (string $joinpoint, array $args, mixed $ret) use ($func): void {
-            $func->afterHook($joinpoint, $args, $ret);
-        });
+        ], [$func, 'afterHook']);
     }
 
     public function delObserver(string $name): void
@@ -35,5 +31,16 @@ class ObserverManager
     {
         $this->delObserver($name);
         $this->addObserver($name, $func);
+    }
+
+    public function getJoinPoint(): array
+    {
+        $arr = [];
+        foreach (get_declared_classes() as $class) {
+            $arr['object'][$class] = get_class_methods($class);
+        }
+
+        $arr['func'] = get_defined_functions()['user'];
+        return $arr;
     }
 }

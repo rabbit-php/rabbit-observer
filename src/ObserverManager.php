@@ -5,29 +5,86 @@ declare(strict_types=1);
 namespace Rabbit\Observer;
 
 use EasyAop;
+use Rabbit\Base\Contract\InitInterface;
+use Rabbit\DB\Redis\Redis;
+use Rabbit\Server\ServerHelper;
 
-class ObserverManager
+class ObserverManager implements InitInterface
 {
-    public function addObserver(string $name, ObsFuncInterface $func): void
-    {
-        EasyAop::add_advice([
-            "bhook@{$name}",
-        ], [$func, 'beforeHook']);
+    private Redis $redis;
+    const CHANNEL_ADD = 'observer:add';
+    const CHANNEL_DEL = 'observer:del';
 
-        EasyAop::add_advice([
-            "ahook@{$name}",
-        ], [$func, 'afterHook']);
+    private array $observers = [];
+
+    public function __construct(string $name = 'ext')
+    {
+        $this->redis = service('redis')->get($name);
+    }
+
+    public function init(): void
+    {
+        $pool = $this->redis->getPool();
+        $redis = $pool->get();
+        $pool->sub();
+        rgo(fn () => $redis->subscribe([self::CHANNEL_ADD, self::CHANNEL_DEL], [$this, 'recv']));
+    }
+
+    public function recv(\Redis $redis, string $channel, string $msg): void
+    {
+        if ($channel === self::CHANNEL_ADD) {
+            [$name, $class] = json_decode($msg, true);
+            $this->add($name, create($class));
+        } elseif ($channel === self::CHANNEL_DEL) {
+            $this->del($msg);
+        }
+    }
+
+    public function addObserver(string $name, string $func): void
+    {
+        if (0 === ServerHelper::getNum()) {
+            $this->add($name, create($func));
+            return;
+        }
+        $this->redis->publish(self::CHANNEL_ADD, json_encode([$name, $func]));
+    }
+
+    public function add(string $name, ObsFuncInterface $func): void
+    {
+        if (!($this->observers[$name] ?? false)) {
+            $this->observers[$name] = 1;
+            EasyAop::add_advice([
+                "bhook@{$name}",
+            ], [$func, 'beforeHook']);
+
+            EasyAop::add_advice([
+                "ahook@{$name}",
+            ], [$func, 'afterHook']);
+        }
     }
 
     public function delObserver(string $name): void
     {
+        if (0 === ServerHelper::getNum()) {
+            $this->del($name);
+            return;
+        }
+        $this->redis->publish(self::CHANNEL_DEL, $name);
+    }
+
+    public function del(string $name): void
+    {
+        if (!($this->observers[$name] ?? false)) {
+            return;
+        }
         EasyAop::del_hook([
             "bhook@{$name}",
             "ahook@{$name}",
         ]);
+        unset($this->observers[$name]);
     }
 
-    public function updateObserver(string $name, ObsFuncInterface $func): void
+    public function updateObserver(string $name, string $func): void
     {
         $this->delObserver($name);
         $this->addObserver($name, $func);

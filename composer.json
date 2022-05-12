@@ -14,6 +14,9 @@
     "ext-easy_aop": "*",
     "rabbit/base": "dev-master"
   },
+  "suggess": {
+    "rabbit/db-redis": "Support multi process"
+  },
   "autoload": {
     "psr-4": {
       "Rabbit\\Observer\\": "src/"

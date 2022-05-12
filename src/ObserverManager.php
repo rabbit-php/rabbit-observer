@@ -7,7 +7,6 @@ namespace Rabbit\Observer;
 use EasyAop;
 use Rabbit\Base\Contract\InitInterface;
 use Rabbit\DB\Redis\Redis;
-use Rabbit\Server\ServerHelper;
 
 class ObserverManager implements InitInterface
 {
@@ -17,7 +16,7 @@ class ObserverManager implements InitInterface
 
     private array $observers = [];
 
-    public function __construct(string $name = 'ext')
+    public function __construct(private bool $local = true, private string $name = 'ext')
     {
         $this->redis = service('redis')->get($name);
     }
@@ -42,8 +41,8 @@ class ObserverManager implements InitInterface
 
     public function addObserver(string $name, string $func): void
     {
-        if (0 === ServerHelper::getNum()) {
-            $this->add($name, create($func));
+        $this->add($name, create($func));
+        if ($this->local) {
             return;
         }
         $this->redis->publish(self::CHANNEL_ADD, json_encode([$name, $func]));
@@ -65,8 +64,8 @@ class ObserverManager implements InitInterface
 
     public function delObserver(string $name): void
     {
-        if (0 === ServerHelper::getNum()) {
-            $this->del($name);
+        $this->del($name);
+        if ($this->local) {
             return;
         }
         $this->redis->publish(self::CHANNEL_DEL, $name);
